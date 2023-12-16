@@ -1026,6 +1026,38 @@ func ValidateMap(s map[string]interface{}, m map[string]interface{}) (bool, erro
 		structResult := true
 		resultField := true
 		switch subValidator := validator.(type) {
+		case []map[string]interface{}:
+			var err error
+			if v, ok := value.([]interface{}); !ok {
+				mapResult = false
+				err = fmt.Errorf("slice map validator has to be for the slice map type only; got %s", valueField.Type().String())
+				err = prependPathToErrors(err, key)
+				errs = append(errs, err)
+			} else {
+				if len(subValidator) > 1 {
+					mapResult = false
+					err = fmt.Errorf("slice map validator should contains only single map; got %d", len(subValidator))
+					err = prependPathToErrors(err, key)
+					errs = append(errs, err)
+				} else {
+					for _, vItem := range v {
+						valueVItem := reflect.ValueOf(vItem)
+						if vItemMap, ok := vItem.(map[string]interface{}); !ok {
+							mapResult = false
+							err = fmt.Errorf("slice map validator has to be for the slice map type only; got %s", valueVItem.Type().String())
+							err = prependPathToErrors(err, key)
+							errs = append(errs, err)
+						} else {
+							mapResult, err = ValidateMap(vItemMap, subValidator[0])
+							if err != nil {
+								mapResult = false
+								err = prependPathToErrors(err, key)
+								errs = append(errs, err)
+							}
+						}
+					}
+				}
+			}
 		case map[string]interface{}:
 			var err error
 			if v, ok := value.(map[string]interface{}); !ok {
